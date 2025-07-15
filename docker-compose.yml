@@ -1,0 +1,20 @@
+services:
+  localstack:
+    image: localstack/localstack:2.3.2  # <-- Specific stable version
+    container_name: localstack_s3
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3
+      - DEBUG=0
+
+  spark:
+    image: jupyter/pyspark-notebook:spark-3.4.1
+    container_name: spark_notebook
+    ports:
+      - "8888:8888"
+      - "4040:4040"
+    volumes:
+      - ./work:/home/jovyan/work
+    depends_on:
+      - localstack
