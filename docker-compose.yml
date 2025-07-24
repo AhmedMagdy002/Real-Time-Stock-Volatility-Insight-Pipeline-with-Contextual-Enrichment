@@ -35,6 +35,53 @@ services:
       - "8888:8888"
     volumes:
       - ./work:/home/jovyan/work
+      - ./ivy2-cache:/home/jovyan/.ivy2
+      - ./m2-cache:/home/jovyan/.m2
     depends_on:
       - kafka
       - localstack
+
+  postgres:
+    image: postgres:13
+    container_name: airflow_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  airflow:
+    image: apache/airflow:2.9.1
+    container_name: airflow
+    restart: always
+    depends_on:
+      - kafka
+      - localstack
+      - postgres
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./work:/opt/airflow/work
+      - ./scripts:/opt/airflow/scripts   
+      - airflow_logs:/opt/airflow/logs
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "8081:8080"
+    command: >
+      bash -c "
+        airflow db upgrade &&
+        airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@example.com --password admin &&
+        airflow scheduler & 
+        airflow webserver
+      "
+
+
+volumes:
+  pg_data:
+  airflow_logs:

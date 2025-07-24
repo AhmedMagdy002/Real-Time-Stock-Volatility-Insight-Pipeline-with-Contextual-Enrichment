@@ -1,0 +1,58 @@
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Environment files
+.env
+*.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+airflow/logs/
+*.out
+
+# Docker artifacts
+*.pid
+*.tar
+docker-compose.override.yml
+
+# Volumes
+pg_data/
+airflow_logs/
+ivy2-cache/
+m2-cache/
+
+# Python virtual environments
+.venv/
+env/
+venv/
+
+# PySpark temporary files
+.metastore_db/
+derby.log
+
+# VS Code config
+.vscode/
+
+# Localstack state
+localstack/.venv/
+localstack/cache/
+localstack/volume/
+
+# __ docker images that may persist things
+*.iml
+*.pid
+
+# Airflow SQLite DB (if any)
+airflow.db
