@@ -21,3 +21,6 @@ for i in range(10):
 
 producer.close()
 print("Done sending messages!")
+
+
+

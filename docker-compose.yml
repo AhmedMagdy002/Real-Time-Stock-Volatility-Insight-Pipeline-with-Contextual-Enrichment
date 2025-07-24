@@ -41,47 +41,26 @@ services:
       - kafka
       - localstack
 
-  postgres:
-    image: postgres:13
-    container_name: airflow_postgres
-    restart: always
-    environment:
-      POSTGRES_USER: airflow
-      POSTGRES_PASSWORD: airflow
-      POSTGRES_DB: airflow
-    volumes:
-      - pg_data:/var/lib/postgresql/data
-
-  airflow:
-    image: apache/airflow:2.9.1
-    container_name: airflow
-    restart: always
-    depends_on:
-      - kafka
-      - localstack
-      - postgres
-    environment:
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
-      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
-    volumes:
-      - ./dags:/opt/airflow/dags
-      - ./work:/opt/airflow/work
-      - ./scripts:/opt/airflow/scripts   
-      - airflow_logs:/opt/airflow/logs
-      - /var/run/docker.sock:/var/run/docker.sock
+  trino:
+    image: trinodb/trino:425
+    container_name: trino
     ports:
-      - "8081:8080"
-    command: >
-      bash -c "
-        airflow db upgrade &&
-        airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@example.com --password admin &&
-        airflow scheduler & 
-        airflow webserver
-      "
+      - "8082:8080"
+    volumes:
+      - ./trino-config:/etc/trino
+    depends_on:
+      - localstack
 
-
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - trino
 volumes:
   pg_data:
   airflow_logs:

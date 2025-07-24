@@ -44,7 +44,7 @@ print("\n📊 Data from Kafka:")
 parsed_df.show()
 
 # Write to Delta Lake on S3
-output_path = "s3a://test-bucket/delta-table"
+output_path = "s3a://test-bucket/delta-tables/my_table"
 
 print(f"\n💾 Writing to Delta Lake at: {output_path}")
 parsed_df.write \
