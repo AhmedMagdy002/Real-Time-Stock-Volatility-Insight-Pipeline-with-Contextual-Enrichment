@@ -103,6 +103,7 @@ Configure Grafana Data Source
 4.	Click Add data source
 5.	Search for Trino
 6.	Configure:
+   
 •	Name: trino-datasource
 
 •	URL: http://trino:8080
