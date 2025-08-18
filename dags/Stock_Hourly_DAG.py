@@ -16,21 +16,35 @@ with DAG(
     'fintech_hourly_processing',
     default_args=default_args,
     description='Hourly processing for fintech dashboard',
-    schedule_interval='5 * * * *',  # Every hour at 5 minutes past (e.g., 10:05, 11:05)
+    schedule_interval='5 * * * *',  # Every hour at 5 minutes past
     catchup=False,
     max_active_runs=1,
     tags=['fintech', 'hourly', 'dashboard']
 ) as dag:
 
     run_hourly_processor = BashOperator(
-    task_id='run_hourly_processor',
-    bash_command="""
-    docker exec spark spark-submit \
-      --master local[*] \
-      --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.1,\
+        task_id='run_hourly_processor',
+        bash_command="""
+        docker exec spark spark-submit \
+          --master local[*] \
+          --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.1,\
 io.delta:delta-core_2.12:2.4.0,\
 org.apache.hadoop:hadoop-aws:3.3.4,\
 com.amazonaws:aws-java-sdk-bundle:1.12.262 \
-      /home/jovyan/work/hourly_processor.py
+          /home/jovyan/work/hourly_processor.py
+        """
+    )
+
+    validate_hourly = BashOperator(
+    task_id="validate_hourly",
+    bash_command="""
+    docker exec spark spark-submit \
+      --master local[*] \
+      --packages io.delta:delta-core_2.12:2.4.0,\
+org.apache.hadoop:hadoop-aws:3.3.4,\
+com.amazonaws:aws-java-sdk-bundle:1.12.262 \
+      /home/jovyan/work/validate_hourly.py
     """
 )
+    # ✅ DAG flow: process hourly data, then validate it
+    run_hourly_processor >> validate_hourly

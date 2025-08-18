@@ -35,3 +35,21 @@ com.amazonaws:aws-java-sdk-bundle:1.12.262 \
     """,
     dag=dag
 )
+    validate_daily = BashOperator(
+        task_id="validate_daily",
+        bash_command="""
+        docker exec spark spark-submit \
+          --master local[*] \
+          --packages io.delta:delta-core_2.12:2.4.0,\
+org.apache.hadoop:hadoop-aws:3.3.4,\
+com.amazonaws:aws-java-sdk-bundle:1.12.262 \
+          --conf spark.hadoop.fs.s3a.endpoint=http://localstack:4566 \
+          --conf spark.hadoop.fs.s3a.access.key=test \
+          --conf spark.hadoop.fs.s3a.secret.key=test \
+          --conf spark.hadoop.fs.s3a.path.style.access=true \
+          --conf spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem \
+          /home/jovyan/work/validate_daily.py
+        """
+    )
+
+run_daily_processor >> validate_daily
