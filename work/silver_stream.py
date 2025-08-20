@@ -15,7 +15,7 @@ cities = list(set(exchange_city_map.values()))
 
 # Global weather cache updated by background thread
 weather_cache = {}
-API_KEY = "34debbcec75c0e6f7351fcda60b141be"
+API_KEY = ""
 POLL_INTERVAL = 600  # 10 minutes
 
 def fetch_all_weather():
