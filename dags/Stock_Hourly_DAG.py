@@ -1,25 +1,27 @@
-# dags/fintech_hourly_batch_dag.py
+# dags/fintech_hourly_processing_v2.py
+
 from airflow import DAG
 from airflow.operators.bash import BashOperator
-from datetime import datetime, timedelta
+from airflow.utils.dates import days_ago
+from datetime import timedelta
 
 default_args = {
     'owner': 'fintech-team',
     'depends_on_past': False,
-    'start_date': datetime(2025, 1, 1),
-    'email_on_failure': False,
+    'start_date': days_ago(1),
+    'email_on_failure': True,
+    'email': ['alerts@example.com'],
     'retries': 1,
     'retry_delay': timedelta(minutes=5)
 }
 
 with DAG(
-    'fintech_hourly_processing',
+    'fintech_hourly_processing_v2',
     default_args=default_args,
-    description='Hourly processing for fintech dashboard',
-    schedule_interval='5 * * * *',  # Every hour at 5 minutes past
+    description='Hourly with schema + business quality checks',
+    schedule_interval='5 * * * *',  # every hour at 5 min past
     catchup=False,
-    max_active_runs=1,
-    tags=['fintech', 'hourly', 'dashboard']
+    max_active_runs=1
 ) as dag:
 
     run_hourly_processor = BashOperator(
@@ -27,8 +29,7 @@ with DAG(
         bash_command="""
         docker exec spark spark-submit \
           --master local[*] \
-          --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.1,\
-io.delta:delta-core_2.12:2.4.0,\
+          --packages io.delta:delta-core_2.12:2.4.0,\
 org.apache.hadoop:hadoop-aws:3.3.4,\
 com.amazonaws:aws-java-sdk-bundle:1.12.262 \
           /home/jovyan/work/hourly_processor.py
@@ -36,15 +37,27 @@ com.amazonaws:aws-java-sdk-bundle:1.12.262 \
     )
 
     validate_hourly = BashOperator(
-    task_id="validate_hourly",
-    bash_command="""
-    docker exec spark spark-submit \
-      --master local[*] \
-      --packages io.delta:delta-core_2.12:2.4.0,\
+        task_id="validate_hourly",
+        bash_command="""
+        docker exec spark spark-submit \
+          --master local[*] \
+          --packages io.delta:delta-core_2.12:2.4.0,\
 org.apache.hadoop:hadoop-aws:3.3.4,\
 com.amazonaws:aws-java-sdk-bundle:1.12.262 \
-      /home/jovyan/work/validate_hourly.py
-    """
-)
-    # ✅ DAG flow: process hourly data, then validate it
-    run_hourly_processor >> validate_hourly
+          /home/jovyan/work/validate_hourly.py
+        """
+    )
+
+    hourly_quality_checks = BashOperator(
+        task_id="hourly_quality_checks",
+        bash_command="""
+        docker exec spark spark-submit \
+          --master local[*] \
+          --packages io.delta:delta-core_2.12:2.4.0,\
+org.apache.hadoop:hadoop-aws:3.3.4,\
+com.amazonaws:aws-java-sdk-bundle:1.12.262 \
+          /home/jovyan/work/hourly_quality_checks.py
+        """
+    )
+
+    run_hourly_processor >> validate_hourly >> hourly_quality_checks

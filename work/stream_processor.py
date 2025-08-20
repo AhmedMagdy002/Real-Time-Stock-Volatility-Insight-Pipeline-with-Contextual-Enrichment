@@ -56,7 +56,7 @@ spark = SparkSession.builder \
     .getOrCreate()
 
 spark.sparkContext.setLogLevel("WARN")
-print("✅ Spark Streaming session created")
+print(" Spark Streaming session created")
 
 # Schema for incoming data
 schema = StructType() \
@@ -66,7 +66,7 @@ schema = StructType() \
     .add("timestamp", StringType()) \
     .add("exchange", StringType())
 
-print("🌊 Starting streaming from Kafka...")
+print(" Starting streaming from Kafka...")
 
 # STREAMING: Read from Kafka continuously
 streaming_df = spark.readStream \
@@ -96,10 +96,10 @@ def enrich_and_store_stream(batch_df, batch_id):
     
     for ex in exchanges:
         city = exchange_city_map.get(ex, "New York")
-        print(f"🌤️ Fetching weather for {ex} ({city})")
+        print(f" Fetching weather for {ex} ({city})")
         weather_data[ex] = fetch_weather_cached(city)
     
-    # ✅ SIMPLIFIED: Only add weather columns (no city)
+    # SIMPLIFIED: Only add weather columns (no city)
     enriched_df = batch_df
     for col_name in ["temperature", "humidity", "condition"]:
         enriched_df = enriched_df.withColumn(col_name, lit(None))
@@ -110,17 +110,17 @@ def enrich_and_store_stream(batch_df, batch_id):
             .withColumn("humidity", when(col("exchange") == exchange, lit(weather.get("humidity"))).otherwise(col("humidity"))) \
             .withColumn("condition", when(col("exchange") == exchange, lit(weather.get("condition"))).otherwise(col("condition")))
     
-    # ✅ ADD DATE PARTITIONING COLUMN
+    #  ADD DATE PARTITIONING COLUMN
     enriched_df = enriched_df \
         .withColumn("date", date_format(col("timestamp"), "yyyy-MM-dd"))
     
-    # ✅ WRITE WITH DATE PARTITIONING ONLY
+    # WRITE WITH DATE PARTITIONING ONLY
     enriched_df.write.format("delta") \
         .mode("append") \
         .partitionBy("date") \
         .save("s3a://test-bucket/delta-tables/streaming_trades")
     
-    print(f"✅ Batch {batch_id} written to streaming storage with date partitioning")
+    print(f" Batch {batch_id} written to streaming storage with date partitioning")
 
 # Start the streaming query
 streaming_query = parsed_stream.writeStream \
@@ -130,14 +130,14 @@ streaming_query = parsed_stream.writeStream \
     .option("checkpointLocation", "s3a://test-bucket/checkpoints/streaming") \
     .start()
 
-print("🌊 Streaming query started! Processing every 5 seconds...")
-print("💡 Run the producer in another terminal to see real-time processing")
-print("🌍 Weather data will be fetched for multiple cities based on exchanges")
+print(" Streaming query started! Processing every 5 seconds...")
+print(" Run the producer in another terminal to see real-time processing")
+print(" Weather data will be fetched for multiple cities based on exchanges")
 
 # Keep streaming running
 try:
     streaming_query.awaitTermination()
 except KeyboardInterrupt:
-    print("\n🛑 Stopping streaming...")
+    print("\n Stopping streaming...")
     streaming_query.stop()
-    print("✅ Streaming stopped")
+    print(" Streaming stopped")

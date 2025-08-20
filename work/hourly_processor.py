@@ -12,8 +12,7 @@ def create_spark_session():
         .appName("FinTechHourlyProcessor") \
         .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension") \
         .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog") \
-        .config("spark.jars.packages", 
-                "org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.1,"
+        .config("spark.jars.packages",
                 "io.delta:delta-core_2.12:2.4.0,"
                 "org.apache.hadoop:hadoop-aws:3.3.4,"
                 "com.amazonaws:aws-java-sdk-bundle:1.12.262") \
@@ -25,37 +24,33 @@ def create_spark_session():
         .getOrCreate()
 
 def run_hourly_processing():
-    """
-    Process the previous completed hour.
-    E.g., if it's 10:05, process 09:00-09:59
-    """
     spark = create_spark_session()
     spark.sparkContext.setLogLevel("WARN")
-    
+
     try:
-        # Calculate previous hour
-        current_time = datetime.now()
-        previous_hour = current_time.replace(minute=0, second=0, microsecond=0) #- timedelta(hours=1)
+        # Last completed hour (so at 10:05 → process 09:00–09:59)
+        now = datetime.now()
+        previous_hour = now.replace(minute=0, second=0, microsecond=0) #- timedelta(hours=1)
         target_hour = previous_hour.strftime("%Y-%m-%d %H")
         target_date = previous_hour.strftime("%Y-%m-%d")
-        
+
         logger.info(f"🕐 Processing hourly data for: {target_hour}")
-        
-        # Read streaming data for the specific hour
+
+        #  Read from Silver trades (not streaming_trades anymore)
         streaming_data = spark.read.format("delta") \
-            .load("s3a://test-bucket/delta-tables/streaming_trades") \
+            .load("s3a://test-bucket/delta-tables/silver_trades") \
             .filter(col("date") == target_date) \
             .filter(date_format(col("timestamp"), "yyyy-MM-dd HH") == target_hour)
-        
+
         record_count = streaming_data.count()
-        
+
         if record_count == 0:
-            logger.warning(f"⚠️ No streaming data found for hour: {target_hour}")
+            logger.warning(f" No records found for hour: {target_hour}")
             return
-        
+
         logger.info(f"📈 Processing {record_count} records for hour: {target_hour}")
-        
-        # Create hourly aggregation
+
+        # Hourly aggregation
         hourly_summary = streaming_data \
             .withColumn("hour", lit(target_hour)) \
             .groupBy("symbol", "exchange", "hour", "date", "condition") \
@@ -69,23 +64,16 @@ def run_hourly_processing():
                 avg("humidity").alias("avg_humidity")
             ) \
             .withColumn("batch_processed_at", lit(datetime.now().isoformat()))
-        
-        hourly_count = hourly_summary.count()
-        logger.info(f"📊 Created {hourly_count} hourly summary records")
-        
-        if hourly_count > 0:
-            # Use merge/upsert to replace only this specific hour
-            hourly_summary.write.format("delta") \
-                .mode("overwrite") \
-                .option("replaceWhere", f"hour = '{target_hour}'") \
-                .save("s3a://test-bucket/delta-tables/hourly_summaries")
-            
-            logger.info(f"✅ Hourly summary updated for {target_hour}")
-        
-        logger.info(f"🎉 Hourly processing completed for {target_hour}!")
-        
+
+        hourly_summary.write.format("delta") \
+            .mode("overwrite") \
+            .option("replaceWhere", f"hour = '{target_hour}'") \
+            .save("s3a://test-bucket/delta-tables/hourly_summaries")
+
+        logger.info(f" Hourly summary updated for {target_hour}")
+
     except Exception as e:
-        logger.error(f"❌ Hourly processing failed: {str(e)}")
+        logger.error(f" Hourly processing failed: {str(e)}")
         raise
     finally:
         spark.stop()

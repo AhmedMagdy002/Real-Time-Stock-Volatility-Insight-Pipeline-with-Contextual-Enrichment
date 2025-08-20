@@ -17,7 +17,7 @@ producer = KafkaProducer(
     value_serializer=lambda v: json.dumps(v).encode('utf-8')
 )
 
-print("🚀 Starting multi-exchange trade producer...")
+print(" Starting multi-exchange trade producer...")
 
 for i in range(40):  # More trades across exchanges
     # Random exchange selection
@@ -29,11 +29,11 @@ for i in range(40):  # More trades across exchanges
         "price": round(random.uniform(100, 300), 2),
         "volume": random.randint(10, 1000),
         "timestamp": datetime.utcnow().isoformat(),
-        "exchange": exchange  # ✅ Now varies across exchanges!
+        "exchange": exchange  #  Now varies across exchanges!
     }
     producer.send('test-topic', value=trade)
-    print(f"✅ Sent: {trade}")
+    print(f" Sent: {trade}")
     time.sleep(0.5)
 
 producer.close()
-print("🚀 Finished sending multi-exchange trades.")
+print(" Finished sending multi-exchange trades.")
