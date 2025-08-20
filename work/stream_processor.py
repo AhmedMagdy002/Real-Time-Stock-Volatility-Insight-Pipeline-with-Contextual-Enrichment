@@ -24,7 +24,7 @@ def fetch_weather_cached(city):
         return cached["data"]
     
     try:
-        url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid=34debbcec75c0e6f7351fcda60b141be&units=metric"
+        url = f"http://api.openweathermap.org/data/2.5/weather?q={city}"
         response = requests.get(url, timeout=5)
         data = response.json()
         weather = {
